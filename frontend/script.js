@@ -1,76 +1,171 @@
+const API_URL = "http://localhost:5000/tasks";
+let currentPage = 1;
+let totalPages = 1;
 
-const API_URL = 'http://localhost:5000/tasks';
+function renderTasks(tasks) {
+    const taskList = document.getElementById("taskList");
+    taskList.innerHTML = "";
 
-document.addEventListener('DOMContentLoaded', () => {
-    init();
-});
+    if (!tasks || tasks.length === 0) {
+        taskList.innerHTML = "<li class='empty'>Niciun task găsit.</li>";
+        return;
+    }
 
-function init() {
-    loadTasks();
-    document.getElementById('taskForm').onsubmit = addTask;
-}
-
-// Fetch and display tasks
-function loadTasks() {
-    fetch(API_URL).then(async (response) => {
-        let res = await response.json();
-        console.log(res);
-        displayTasks(res.data)
-    }).catch(error => {
-        console.error('Error loading tasks:', error);
-    });
-}
-
-function displayTasks(tasks) {
-    const taskList = document.getElementById('taskList');
-    taskList.innerHTML = '';
-    // console.log(tasks);
     tasks.forEach(task => {
-        const li = document.createElement('li');
-        li.innerHTML = `
-        <span>${task.title}</span>
-        <button onclick="editTask(${task.id},'${task.title}')">Edit</button>
-        <button onclick="deleteTask(${task.id})">Delete</button>
-      `;
+        const li = document.createElement("li");
+        li.className = task.completed ? "completed" : "";
+
+        const info = document.createElement("div");
+        info.className = "task-info";
+        info.innerHTML = `<strong>#${task.id} ${task.title}</strong>` +
+            (task.description ? `<p>${task.description}</p>` : "");
+
+        const actions = document.createElement("div");
+        actions.className = "actions";
+
+        const completeBtn = document.createElement("button");
+        completeBtn.textContent = task.completed ? "Undo" : "✓ Complete";
+        completeBtn.className = task.completed ? "secondary" : "success";
+        completeBtn.onclick = () => toggleTask(task.id, !task.completed);
+
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "Edit";
+        editBtn.onclick = () => editTask(task.id, task.title, task.description);
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Delete";
+        deleteBtn.className = "danger";
+        deleteBtn.onclick = () => deleteTask(task.id);
+
+        actions.appendChild(completeBtn);
+        actions.appendChild(editBtn);
+        actions.appendChild(deleteBtn);
+
+        li.appendChild(info);
+        li.appendChild(actions);
         taskList.appendChild(li);
     });
 }
 
-// Add a new task
-function addTask(event) {
-    event.preventDefault();
-    const taskInput = document.getElementById('taskInput');
-    const newTask = { title: taskInput.value, description: "" };
+// TODO 2: GET /tasks
+async function fetchAllTasks() {
+    const response = await fetch(API_URL);
+    const result = await response.json();
+    if (result.status) {
+        renderTasks(result.data);
+        document.getElementById("pageInfo").textContent = `Toate (${result.data.length})`;
+    }
+}
 
-    fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTask),
-    }).then(() => {
-        taskInput.value = '';
-        loadTasks();
-    }).catch(error => {
-        console.error('Error adding task:', error);
+// TODO 9: GET /tasks/paginate
+async function changePage(page) {
+    if (page < 1) return;
+    const limit = document.getElementById("limitSelect").value;
+    const response = await fetch(`${API_URL}/paginate?page=${page}&limit=${limit}`);
+    const result = await response.json();
+
+    if (result.status) {
+        currentPage = result.page || page;
+        totalPages = result.pages || 1;
+        renderTasks(result.data);
+        document.getElementById("pageInfo").textContent =
+            `Pagina ${currentPage} din ${totalPages || 1} (Total: ${result.total ?? result.data.length})`;
+        document.getElementById("prevBtn").disabled = currentPage <= 1;
+        document.getElementById("nextBtn").disabled = currentPage >= totalPages;
+    }
+}
+
+// TODO 1: POST /tasks
+async function addTask() {
+    const titleInput = document.getElementById("taskInput");
+    const descInput = document.getElementById("descInput");
+    const title = titleInput.value.trim();
+    const description = descInput.value.trim();
+
+    const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description })
     });
+    const result = await response.json();
+
+    if (!response.ok) {
+        alert(result.error || "Eroare la adăugare");
+        return;
+    }
+
+    titleInput.value = "";
+    descInput.value = "";
+    fetchAllTasks();
 }
 
-// Update a task
-function editTask(id, currentName) {
-    const newName = prompt("Update task:", currentName);
-    if (!newName) return;
-
-    fetch(`${API_URL}/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newName }),
-    })
-        .then(loadTasks)
-        .catch(error => console.error('Error updating task:', error));
+// TODO 4: PUT /tasks/<id>
+async function toggleTask(id, completed) {
+    await fetch(`${API_URL}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed })
+    });
+    fetchAllTasks();
 }
 
-// Delete a task
-function deleteTask(id) {
-    fetch(`${API_URL}/${id}`, { method: 'DELETE' })
-        .then(loadTasks)
-        .catch(error => console.error('Error deleting task:', error));
+async function editTask(id, currentTitle, currentDesc) {
+    const newTitle = prompt("Modifică titlul:", currentTitle);
+    if (newTitle === null) return;
+    const newDesc = prompt("Modifică descrierea:", currentDesc || "");
+
+    const response = await fetch(`${API_URL}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newTitle, description: newDesc })
+    });
+    const result = await response.json();
+    if (!response.ok) {
+        alert(result.error || "Eroare la actualizare");
+    }
+    fetchAllTasks();
 }
+
+// TODO 5: DELETE /tasks/<id>
+async function deleteTask(id) {
+    await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+    fetchAllTasks();
+}
+
+// TODO 8: GET /tasks/filter
+async function filterTasks() {
+    const val = document.getElementById("filterSelect").value;
+    if (val === "all") {
+        fetchAllTasks();
+        return;
+    }
+    const response = await fetch(`${API_URL}/filter?completed=${val}`);
+    const result = await response.json();
+    if (result.status) {
+        renderTasks(result.data);
+        document.getElementById("pageInfo").textContent = `Filtrate (${result.data.length})`;
+    }
+}
+
+// TODO 10: GET /tasks/search
+async function searchTasks() {
+    const q = document.getElementById("searchInput").value.trim();
+    if (!q) {
+        fetchAllTasks();
+        return;
+    }
+    const response = await fetch(`${API_URL}/search?q=${encodeURIComponent(q)}`);
+    const result = await response.json();
+    if (result.status) {
+        renderTasks(result.data);
+        document.getElementById("pageInfo").textContent = `Rezultate căutare (${result.data.length})`;
+    }
+}
+
+function resetView() {
+    document.getElementById("searchInput").value = "";
+    document.getElementById("filterSelect").value = "all";
+    fetchAllTasks();
+}
+
+document.addEventListener("DOMContentLoaded", fetchAllTasks);

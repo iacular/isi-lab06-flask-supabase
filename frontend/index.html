@@ -1,19 +1,62 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="ro">
 <head>
     <meta charset="UTF-8">
-    <title>Task Manager</title>
-    <script src="script.js" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager - Lab 6 ISI</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-    <h1>Task Manager</h1>
-    <form id="taskForm">
-        <input type="text" id="taskInput" placeholder="Enter new task" required>
-        <button type="submit">Add Task</button>
-    </form>
-    <ul id="taskList"></ul>
-</body>
+    <div class="container">
+        <h1>Task Manager (Flask + Supabase)</h1>
 
+        <!-- Adăugare task (TODO 1) -->
+        <div class="card">
+            <h3>Adaugă Task Nou</h3>
+            <div class="input-group">
+                <input type="text" id="taskInput" placeholder="Titlu task (obligatoriu)...">
+                <input type="text" id="descInput" placeholder="Descriere (opțional)...">
+                <button onclick="addTask()">Adaugă</button>
+            </div>
+        </div>
+
+        <!-- Căutare & Filtrare (TODO 8 & TODO 10) -->
+        <div class="card controls-row">
+            <div class="control-box">
+                <input type="text" id="searchInput" placeholder="Caută în titlu/descriere...">
+                <button onclick="searchTasks()">Caută</button>
+            </div>
+            <div class="control-box">
+                <select id="filterSelect" onchange="filterTasks()">
+                    <option value="all">Toate task-urile</option>
+                    <option value="false">Nefinalizate (Active)</option>
+                    <option value="true">Finalizate (Completed)</option>
+                </select>
+                <button class="secondary" onclick="resetView()">Reset</button>
+            </div>
+        </div>
+
+        <!-- Lista de task-uri -->
+        <ul id="taskList"></ul>
+
+        <!-- Paginare (TODO 9) -->
+        <div class="pagination-bar">
+            <div>
+                <label>Pe pagină:</label>
+                <select id="limitSelect" onchange="changePage(1)">
+                    <option value="5">5</option>
+                    <option value="3">3</option>
+                    <option value="10">10</option>
+                </select>
+                <button class="secondary" onclick="fetchAllTasks()">Arată tot (GET /tasks)</button>
+            </div>
+            <div class="page-buttons">
+                <button id="prevBtn" onclick="changePage(currentPage - 1)">« Anterior</button>
+                <span id="pageInfo">Pagina 1</span>
+                <button id="nextBtn" onclick="changePage(currentPage + 1)">Următor »</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
 </html>

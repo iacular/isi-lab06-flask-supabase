@@ -1,1 +1,8 @@
-backend/instance/
+.env
+backend/.env
+.venv/
+backend/.venv/
+__pycache__/
+backend/__pycache__/
+*.pyc
+tasks.db
